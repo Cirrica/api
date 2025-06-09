@@ -1,8 +1,6 @@
 const supabase = require('../config/supabase');
 const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
-const loadOtpTemplate = require('../emailTemplates/otp');
-const transporter = require('../config/email');
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
@@ -20,13 +18,26 @@ async function getUserByEmail(email) {
 
 // Signup
 exports.signup = async (req, res) => {
-  const { firstName, lastName, email, password } = req.body;
-  if (!firstName || !lastName || !email || !password) {
-    return res.status(400).json({ error: 'All fields required' });
+  const { firstName, lastName, email, password, otpToken } = req.body;
+  if (!firstName || !lastName || !email || !password || !otpToken) {
+    return res
+      .status(400)
+      .json({ error: 'All fields and OTP verification required' });
+  }
+  // Verify OTP session token (JWT)
+  let decoded;
+  try {
+    decoded = jwt.verify(otpToken, JWT_SECRET);
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid or expired OTP session' });
+  }
+  if (!decoded || decoded.email !== email || !decoded.otp_verified) {
+    return res.status(400).json({ error: 'OTP verification required' });
   }
   if (await getUserByEmail(email)) {
     return res.status(400).json({ error: 'Email already registered' });
   }
+
   const hash = await bcrypt.hash(password, 10);
   const { data, error } = await supabase
     .from('users')
@@ -37,6 +48,7 @@ exports.signup = async (req, res) => {
         last_name: lastName,
         email,
         password: hash,
+        is_verified: true, // Securely set by backend after OTP JWT check
       },
     ])
     .select();
@@ -68,55 +80,6 @@ exports.signin = async (req, res) => {
     { expiresIn: '7d' }
   );
   res.json({ token });
-};
-
-// Send OTP (email) for signup (no user required yet)
-exports.sendOtp = async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email required' });
-  // Don't allow sending OTP if user already exists
-  if (await getUserByEmail(email)) {
-    return res.status(400).json({ error: 'Email already registered' });
-  }
-  // Generate OTP and store with email only (no user_id)
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-  // Save OTP with email (add email column to otps table if not present)
-  await supabase.from('otps').insert([
-    {
-      code,
-      expires_at: expiresAt,
-      email,
-    },
-  ]);
-  const htmlContent = loadOtpTemplate(code);
-  await transporter.sendMail({
-    from: 'No-Reply <noreply@cirrica.com>',
-    to: email,
-    subject: 'One-Time Code - Cirrica Capital',
-    text: `Here is your one-time code: ${code}`,
-    html: htmlContent,
-  });
-  res.json({ message: 'OTP sent' });
-};
-
-// Verify OTP for signup (no user required yet)
-exports.verifyOtp = async (req, res) => {
-  const { email, code } = req.body;
-  if (!email || !code)
-    return res.status(400).json({ error: 'Email and code required' });
-  const { data, error } = await supabase
-    .from('otps')
-    .select('*')
-    .eq('email', email)
-    .eq('code', code)
-    .gt('expires_at', new Date().toISOString())
-    .single();
-  if (error || !data)
-    return res.status(400).json({ error: 'Invalid or expired OTP' });
-  // Optionally delete OTP after use
-  await supabase.from('otps').delete().eq('id', data.id);
-  res.json({ message: 'OTP verified' });
 };
 
 // Delete temp user (for email existence check)
