@@ -11,6 +11,9 @@ app.use(express.json());
 const emailRouter = require('./routes/email');
 app.use('/email', emailRouter);
 
+const userRouter = require('./routes/user');
+app.use('/user', userRouter);
+
 app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
 });
