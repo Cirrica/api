@@ -5,12 +5,12 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
-// Helper: Find user by email
+// Helper: Find user by email (case-insensitive)
 async function getUserByEmail(email) {
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .eq('email', email)
+    .ilike('email', email.toLowerCase())
     .single();
   if (error) return null;
   return data;
@@ -18,12 +18,13 @@ async function getUserByEmail(email) {
 
 // Signup
 exports.signup = async (req, res) => {
-  const { firstName, lastName, email, password, otpToken } = req.body;
+  let { firstName, lastName, email, password, otpToken } = req.body;
   if (!firstName || !lastName || !email || !password || !otpToken) {
     return res
       .status(400)
       .json({ error: 'All fields and OTP verification required' });
   }
+  email = email.toLowerCase();
   // Verify OTP session token (JWT)
   let decoded;
   try {
@@ -38,6 +39,17 @@ exports.signup = async (req, res) => {
     return res.status(400).json({ error: 'Email already registered' });
   }
 
+  // Password validation
+  const passwordRegex = /^(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+  if (!passwordRegex.test(password)) {
+    return res
+      .status(400)
+      .json({
+        error:
+          'Password must be at least 8 characters and contain at least one special character.',
+      });
+  }
+
   const hash = await bcrypt.hash(password, 10);
   const { data, error } = await supabase
     .from('users')
@@ -46,7 +58,7 @@ exports.signup = async (req, res) => {
         user_id: uuidv4(),
         first_name: firstName,
         last_name: lastName,
-        email,
+        email, // always lowercased
         password: hash,
         is_verified: true, // Securely set by backend after OTP JWT check
       },
@@ -58,10 +70,11 @@ exports.signup = async (req, res) => {
 
 // Signin
 exports.signin = async (req, res) => {
-  const { email, password } = req.body;
+  let { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password required' });
   }
+  email = email.toLowerCase();
   const user = await getUserByEmail(email);
   if (!user) return res.status(400).json({ error: 'Invalid credentials' });
   const valid = await bcrypt.compare(password, user.password);
@@ -84,8 +97,9 @@ exports.signin = async (req, res) => {
 
 // Delete temp user (for email existence check)
 exports.deleteTemp = async (req, res) => {
-  const { email } = req.body;
+  let { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
+  email = email.toLowerCase();
   // Only delete if user is not verified and password is dummy
   const { data, error } = await supabase
     .from('users')
@@ -99,8 +113,9 @@ exports.deleteTemp = async (req, res) => {
 
 // Check if email exists (no user creation)
 exports.checkEmail = async (req, res) => {
-  const { email } = req.body;
+  let { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
+  email = email.toLowerCase();
   const user = await getUserByEmail(email);
   if (user) return res.json({ exists: true });
   res.json({ exists: false });
