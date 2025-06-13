@@ -2,7 +2,7 @@ const transporter = require('../config/email');
 const loadOtpTemplate = require('../emailTemplates/otp');
 const jwt = require('jsonwebtoken');
 
-// In-memory store for OTPs (use Redis or DB in production)
+// In-memory store for OTPs (use  Redis or DB in production)
 const otpStore = {};
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
