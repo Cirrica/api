@@ -58,7 +58,7 @@ exports.signup = async (req, res) => {
         user_id: uuidv4(),
         first_name: firstName,
         last_name: lastName,
-        email, // always lowercased
+        email, // always lowercased..
         password: hash,
         is_verified: true, // Securely set by backend after OTP JWT check
       },
