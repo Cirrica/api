@@ -8,7 +8,7 @@ const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
 const WEBHOOK_ENABLED = process.env.GITHUB_WEBHOOK_ENABLED === 'true';
 
 router.post('/', express.raw({ type: 'application/json' }), (req, res) => {
-  console.log('✅ Webhook route hit');
+  console.log('✅ Webhook route is hit');
 
   const signature = req.headers['x-hub-signature-256'];
   if (!signature || !WEBHOOK_SECRET) {
