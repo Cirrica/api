@@ -4,8 +4,8 @@ const crypto = require('crypto');
 const { exec } = require('child_process');
 require('dotenv').config();
 
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
-const WEBHOOK_ENABLED = process.env.WEBHOOK_ENABLED === 'true';
+const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
+const WEBHOOK_ENABLED = process.env.GITHUB_WEBHOOK_ENABLED === 'true';
 
 router.post('/', express.raw({ type: 'application/json' }), (req, res) => {
   console.log('✅ Webhook route hit');
