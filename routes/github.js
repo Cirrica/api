@@ -1,3 +1,12 @@
+const express = require('express');
+const router = express.Router();
+const crypto = require('crypto');
+const { exec } = require('child_process');
+require('dotenv').config();
+
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
+const WEBHOOK_ENABLED = process.env.WEBHOOK_ENABLED === 'true';
+
 router.post('/', express.raw({ type: 'application/json' }), (req, res) => {
   console.log('✅ Webhook route hit');
 
@@ -22,10 +31,8 @@ router.post('/', express.raw({ type: 'application/json' }), (req, res) => {
   const event = req.headers['x-github-event'];
   console.log('📦 GitHub Event:', event);
 
-  // Immediately respond to webhook so GitHub gets a 200 OK
   res.status(200).send('Webhook received, pulling changes...');
 
-  // Then asynchronously handle the pull if enabled and event is push
   if (event === 'push' && WEBHOOK_ENABLED) {
     exec('./pull.sh', (err, stdout, stderr) => {
       if (err) {
@@ -44,3 +51,5 @@ router.post('/', express.raw({ type: 'application/json' }), (req, res) => {
     );
   }
 });
+
+module.exports = router;
