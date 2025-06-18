@@ -16,6 +16,9 @@ app.use('/email', emailRouter);
 const userRouter = require('./routes/user');
 app.use('/user', userRouter);
 
+const githubRouter = require('./routes/github');
+app.use('/github-webhook', githubRouter);
+
 app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
 });
