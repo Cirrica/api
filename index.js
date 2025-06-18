@@ -8,12 +8,12 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // Middleware: CORS and JSON parsing early
-app.use(cors());
-app.use(express.json());
 
-// Routers
 const githubRouter = require('./routes/github');
 app.use('/github-webhook', githubRouter);
+
+app.use(cors());
+app.use(express.json());
 
 const emailRouter = require('./routes/email');
 app.use('/email', emailRouter);
