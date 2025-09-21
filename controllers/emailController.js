@@ -11,8 +11,11 @@ function generateOtp() {
 }
 
 exports.sendOtpEmail = async (req, res) => {
-  const { email } = req.body;
+  let { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  // Normalize email to lowercase for consistency
+  email = email.toLowerCase();
 
   const otpCode = generateOtp();
   const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
@@ -34,7 +37,9 @@ exports.sendOtpEmail = async (req, res) => {
 };
 
 exports.verifyOtpEmail = (req, res) => {
-  const { email, code } = req.body;
+  let { email, code } = req.body;
+  // Normalize email to lowercase for consistency
+  email = email.toLowerCase();
   const record = otpStore[email];
   if (!record) return res.status(400).json({ error: 'No OTP requested' });
   if (Date.now() > record.expiresAt) {
@@ -48,6 +53,7 @@ exports.verifyOtpEmail = (req, res) => {
   // Issue a short-lived JWT as OTP session token
   const otpToken = jwt.sign({ email, otp_verified: true }, JWT_SECRET, {
     expiresIn: '10m',
+    algorithm: 'HS256',
   });
   res.json({ message: 'OTP verified', otpToken });
 };

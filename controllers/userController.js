@@ -28,9 +28,11 @@ exports.signup = async (req, res) => {
   // Verify OTP session token (JWT)
   let decoded;
   try {
-    decoded = jwt.verify(otpToken, JWT_SECRET);
+    decoded = jwt.verify(otpToken, JWT_SECRET, { algorithms: ['HS256'] });
   } catch (err) {
-    return res.status(400).json({ error: 'Invalid or expired OTP session' });
+    return res.status(400).json({
+      error: 'Invalid or expired OTP session',
+    });
   }
   if (!decoded || decoded.email !== email || !decoded.otp_verified) {
     return res.status(400).json({ error: 'OTP verification required' });
@@ -42,12 +44,10 @@ exports.signup = async (req, res) => {
   // Password validation
   const passwordRegex = /^(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
   if (!passwordRegex.test(password)) {
-    return res
-      .status(400)
-      .json({
-        error:
-          'Password must be at least 8 characters and contain at least one special character.',
-      });
+    return res.status(400).json({
+      error:
+        'Password must be at least 8 characters and contain at least one special character.',
+    });
   }
 
   const hash = await bcrypt.hash(password, 10);
@@ -90,7 +90,7 @@ exports.signin = async (req, res) => {
       signup_date: user.signup_date,
     },
     JWT_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: '7d', algorithm: 'HS256' }
   );
   res.json({ token });
 };
@@ -100,13 +100,15 @@ exports.deleteTemp = async (req, res) => {
   let { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
   email = email.toLowerCase();
-  // Only delete if user is not verified and password is dummy
+
+  // Only delete if user is not verified
+  // Note: We can't match on password hash since bcrypt generates different hashes each time
   const { data, error } = await supabase
     .from('users')
     .delete()
     .eq('email', email)
-    .eq('is_verified', false)
-    .eq('password', await bcrypt.hash('dummyPassword123!', 10));
+    .eq('is_verified', false);
+
   if (error) return res.status(500).json({ error: error.message });
   res.json({ message: 'Temp user deleted' });
 };
